@@ -2,30 +2,48 @@
  * DOCX Export - Convert document lines to DOCX format
  */
 
-import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx';
-import { Document, Line } from '../parsers/types';
+import { Document as DocxDocument, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
+import { Document } from '../parsers/types';
 
 /**
- * Export document to DOCX format
+ * Export document to DOCX format with formatting preservation
  */
 export async function exportToDocx(document: Document): Promise<Blob> {
   try {
     console.info('[DOCX_EXPORT] Starting DOCX export');
 
-    // Create paragraphs from lines
-    const paragraphs = document.lines.map(line =>
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: line.text || ' ', // Empty lines need at least a space
-            break: 0
-          })
-        ],
+    // Create paragraphs from lines with formatting
+    const paragraphs = document.lines.map(line => {
+      const formatting = line.formatting;
+
+      // Build TextRun with formatting
+      const textRun = new TextRun({
+        text: line.text || ' ', // Empty lines need at least a space
+        bold: formatting?.bold || false,
+        italics: formatting?.italic || false,
+        underline: formatting?.underline ? {} : undefined,
+        size: formatting?.fontSize ? formatting.fontSize * 2 : undefined, // docx uses half-points
+        font: formatting?.fontFamily || undefined,
+        color: formatting?.color ? formatting.color.replace('#', '') : undefined
+      });
+
+      // Build paragraph with alignment
+      const paragraph = new Paragraph({
+        children: [textRun],
         spacing: {
           after: 100 // Small spacing between lines
-        }
-      })
-    );
+        },
+        alignment: formatting?.alignment === 'center'
+          ? AlignmentType.CENTER
+          : formatting?.alignment === 'right'
+          ? AlignmentType.RIGHT
+          : formatting?.alignment === 'justify'
+          ? AlignmentType.JUSTIFIED
+          : AlignmentType.LEFT
+      });
+
+      return paragraph;
+    });
 
     // Create document
     const doc = new DocxDocument({

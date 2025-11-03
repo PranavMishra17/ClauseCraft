@@ -2,12 +2,25 @@
  * Core type definitions for the document editor
  */
 
+export interface LineFormatting {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  fontSize?: number;
+  fontFamily?: string;
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  color?: string;
+  backgroundColor?: string;
+}
+
 export interface Line {
   lineNumber: number;
   text: string;
   pageNumber: number;
   isLocked: boolean;
   isPlaceholder: boolean;
+  formatting?: LineFormatting;
+  placeholderNames?: string[]; // Names of detected placeholders in this line
 }
 
 export interface DocumentMetadata {

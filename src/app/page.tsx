@@ -11,6 +11,7 @@ import { exportDocument } from '@/lib/export';
 import DocumentViewer from '@/components/document/DocumentViewer';
 import ChatInterface from '@/components/chat/ChatInterface';
 import ChatHistory from '@/components/sidebar/ChatHistory';
+import InitialSetupModal from '@/components/modals/InitialSetupModal';
 import { Upload, AlertCircle } from 'lucide-react';
 
 export default function Home() {
@@ -20,6 +21,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [isRunningLLMDetection, setIsRunningLLMDetection] = useState(false);
 
   // Load chats from localStorage on mount
   useEffect(() => {
@@ -55,12 +58,30 @@ export default function Home() {
       // Save document to localStorage
       saveDocument(data.document);
 
-      // Create a new chat for this document
-      const newChat = createChat(file.name, data.document.id);
-      const updatedChats = [newChat, ...chats];
-      setChats(updatedChats);
-      setCurrentChat(newChat);
-      saveChats(updatedChats);
+      // If current chat exists and has no messages, reuse it (rename it to filename)
+      // Otherwise create a new chat
+      if (currentChat && currentChat.messages.length === 0) {
+        const renamedChat = {
+          ...currentChat,
+          title: file.name,
+          documentId: data.document.id,
+          updatedAt: new Date()
+        };
+        const updatedChats = chats.map(c => c.id === currentChat.id ? renamedChat : c);
+        setChats(updatedChats);
+        setCurrentChat(renamedChat);
+        saveChats(updatedChats);
+      } else {
+        // Create a new chat for this document
+        const newChat = createChat(file.name, data.document.id);
+        const updatedChats = [newChat, ...chats];
+        setChats(updatedChats);
+        setCurrentChat(newChat);
+        saveChats(updatedChats);
+      }
+
+      // Show setup modal for new documents
+      setShowSetupModal(true);
 
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -71,7 +92,7 @@ export default function Home() {
   };
 
   // Handle send message
-  const handleSendMessage = async (messageText: string) => {
+  const handleSendMessage = async (messageText: string, customPrompt?: string) => {
     if (!document || !currentChat) {
       setError('No document or chat selected');
       return;
@@ -105,14 +126,15 @@ export default function Home() {
       setChats(updatedChats);
       saveChats(updatedChats);
 
-      // Send to API
+      // Send to API with optional custom prompt
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageText,
           document,
-          chatHistory: currentChat.messages
+          chatHistory: currentChat.messages,
+          customPrompt: customPrompt || undefined
         })
       });
 
@@ -183,15 +205,13 @@ export default function Home() {
 
   // Handle new chat
   const handleNewChat = () => {
-    if (!document) {
-      alert('Please upload a document first');
-      return;
-    }
-
-    const newChat = createChat('New Chat', document.id);
+    // Create a new empty chat without document
+    // User will see upload prompt in document viewer
+    const newChat = createChat('New Chat', undefined);
     const updatedChats = [newChat, ...chats];
     setChats(updatedChats);
     setCurrentChat(newChat);
+    setDocument(null); // Clear document to show upload prompt
     saveChats(updatedChats);
   };
 
@@ -236,6 +256,88 @@ export default function Home() {
     } catch (error) {
       console.error('Error exporting document:', error);
       setError(error instanceof Error ? error.message : 'Failed to export document');
+    }
+  };
+
+  // Handle auto-lock non-placeholder lines
+  const handleAutoLock = () => {
+    if (!document) return;
+
+    const updatedLines = document.lines.map(line => ({
+      ...line,
+      // Lock all lines that are NOT placeholders
+      isLocked: !line.isPlaceholder
+    }));
+
+    const updatedDocument = {
+      ...document,
+      lines: updatedLines
+    };
+
+    setDocument(updatedDocument);
+    saveDocument(updatedDocument);
+
+    console.log('[AUTO_LOCK] Locked all non-placeholder lines');
+  };
+
+  // Handle LLM-powered placeholder detection
+  const handleRunLLMDetection = async () => {
+    if (!document) return;
+
+    try {
+      setIsRunningLLMDetection(true);
+      setError(null);
+
+      console.log('[LLM_DETECTION] Starting LLM-powered detection');
+
+      // Prepare lines for API
+      const linesData = document.lines.map(line => ({
+        lineNumber: line.lineNumber,
+        text: line.text
+      }));
+
+      const response = await fetch('/api/detect-placeholders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lines: linesData })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Failed to detect placeholders');
+      }
+
+      console.log(`[LLM_DETECTION] Detected ${data.placeholderCount} placeholder lines`);
+
+      // Update document with LLM results
+      const updatedLines = document.lines.map(line => {
+        const llmResult = data.results[line.lineNumber];
+        if (llmResult) {
+          return {
+            ...line,
+            isPlaceholder: llmResult.isPlaceholder,
+            placeholderNames: llmResult.placeholderNames.length > 0 ? llmResult.placeholderNames : undefined
+          };
+        }
+        return line;
+      });
+
+      const updatedDocument = {
+        ...document,
+        lines: updatedLines
+      };
+
+      setDocument(updatedDocument);
+      saveDocument(updatedDocument);
+
+      console.log('[LLM_DETECTION] Document updated with LLM results');
+
+    } catch (error) {
+      console.error('[LLM_DETECTION] Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to run LLM detection');
+    } finally {
+      setIsRunningLLMDetection(false);
     }
   };
 
@@ -287,16 +389,14 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Chat History */}
-        <div className="w-64 flex-shrink-0">
-          <ChatHistory
-            chats={chats}
-            currentChatId={currentChat?.id}
-            onSelectChat={handleSelectChat}
-            onNewChat={handleNewChat}
-            onDeleteChat={handleDeleteChat}
-          />
-        </div>
+        {/* Left Sidebar - Chat History (Collapsible) */}
+        <ChatHistory
+          chats={chats}
+          currentChatId={currentChat?.id}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          onDeleteChat={handleDeleteChat}
+        />
 
         {/* Middle - Document Viewer */}
         <div className="flex-1">
@@ -304,6 +404,8 @@ export default function Home() {
             document={document}
             onLineToggleLock={handleLineToggleLock}
             onExport={handleExport}
+            onRunLLMDetection={handleRunLLMDetection}
+            isRunningLLMDetection={isRunningLLMDetection}
           />
         </div>
 
@@ -316,6 +418,17 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* Initial Setup Modal */}
+      {document && (
+        <InitialSetupModal
+          isOpen={showSetupModal}
+          onClose={() => setShowSetupModal(false)}
+          onAutoLock={handleAutoLock}
+          placeholderCount={document.lines.filter(line => line.isPlaceholder).length}
+          totalLines={document.lines.length}
+        />
+      )}
     </div>
   );
 }

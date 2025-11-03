@@ -1,28 +1,45 @@
 /**
  * Markdown Parser - Extracts lines from Markdown files
- * Simple line-by-line parsing with header detection
+ * Line-by-line parsing with header detection and formatting preservation
  */
 
 import { marked } from 'marked';
-import { Line } from './types';
+import { Line, LineFormatting } from './types';
+import { isPlaceholderLine, detectPlaceholders } from './placeholder-detector';
 
 const LINES_PER_PAGE = 50; // Configurable estimate for markdown
-const PLACEHOLDER_PATTERNS = [
-  /\{\{.*?\}\}/g,           // {{PLACEHOLDER}}
-  /\[([A-Z_]+)\]/g,         // [CONSTANT_NAME]
-  /_{5,}/g                   // _____
-];
 
 /**
- * Detects if a line contains placeholder text
+ * Detects markdown formatting in a line
  */
-function isPlaceholderLine(text: string): boolean {
-  try {
-    return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(text));
-  } catch (error) {
-    console.error('[MD_PARSER] Error detecting placeholder:', error);
-    return false;
+function detectMarkdownFormatting(text: string): LineFormatting | undefined {
+  const formatting: LineFormatting = {};
+
+  // Check for bold (**text** or __text__)
+  if (/\*\*.+?\*\*/.test(text) || /__.+?__/.test(text)) {
+    formatting.bold = true;
   }
+
+  // Check for italic (*text* or _text_)
+  if (/\*.+?\*/.test(text) || /_.+?_/.test(text)) {
+    formatting.italic = true;
+  }
+
+  // Check for headers (alignment center is common for headers)
+  const headerMatch = text.match(/^(#{1,6})\s+(.+)$/);
+  if (headerMatch) {
+    const level = headerMatch[1].length;
+    // H1 and H2 are often centered in documents
+    if (level <= 2) {
+      formatting.alignment = 'center';
+    }
+    // Headers are typically bold
+    formatting.bold = true;
+    // Size based on header level
+    formatting.fontSize = 24 - (level * 2);
+  }
+
+  return Object.keys(formatting).length > 0 ? formatting : undefined;
 }
 
 /**
@@ -85,16 +102,30 @@ export async function parseMarkdown(content: string): Promise<Line[]> {
       const lineNumber = index + 1;
       const pageNumber = Math.ceil(lineNumber / LINES_PER_PAGE);
 
+      // Detect placeholders using comprehensive detector
+      const placeholderDetection = detectPlaceholders(text);
+      const isPlaceholder = isPlaceholderLine(text);
+      const placeholderNames = placeholderDetection.placeholders.map(ph => ph.name);
+
+      // Detect markdown formatting
+      const formatting = detectMarkdownFormatting(text);
+
       lines.push({
         lineNumber,
         text: text, // Keep original formatting including whitespace
         pageNumber,
         isLocked: false,
-        isPlaceholder: isPlaceholderLine(text)
+        isPlaceholder,
+        formatting,
+        placeholderNames: placeholderNames.length > 0 ? placeholderNames : undefined
       });
     });
 
     console.info(`[MD_PARSER] Successfully parsed ${lines.length} lines from ${Math.ceil(lines.length / LINES_PER_PAGE)} estimated pages`);
+
+    // Count placeholder lines
+    const placeholderLineCount = lines.filter(line => line.isPlaceholder).length;
+    console.info(`[MD_PARSER] Detected ${placeholderLineCount} placeholder lines`);
 
     return lines;
 

@@ -1,0 +1,18 @@
+﻿feat: Complete ClauseCraft v1.0  AI document editor
+
+Summary:
+- Full Next.js + TypeScript app for intelligent legal document editing powered by Google Gemini Flash.
+- Implemented DOCX, PDF, and Markdown parsing; line-by-line document viewer with formatting preservation.
+- AI chat with function-calling tools: doc_search, doc_read, doc_edit, doc_analyze (Gemini 2.0 Flash integration).
+
+Major fixes & improvements:
+- Fixed placeholder detection: removed false threshold logic, added 8+ regex patterns (capitalized, lowercase, underscores, curly braces, bracket variants).
+- Added optional LLM-powered placeholder detection (batch Gemini endpoint) behind a user-triggered button to control cost.
+- Resolved DOCX parser HTML bug by changing capturing groups to non-capturing (prevents stray "P" characters in UI).
+- Fixed New Chat flow and upload deduping: new chat now clears document and upload reuses empty chat.
+- Ensured locked lines are never sent to LLM tools (doc_analyze/doc_read/doc_edit protection).
+
+Files changed (high-level):
+- Modified: placeholder-detector.ts, docx.ts, tools.ts, DocumentViewer.tsx, page.tsx, LineItem.tsx
+- New: llm-placeholder-detector.ts, detect-placeholders/route.ts
+- Exporters: pdf.ts, docx.ts, markdown.ts (formatting preserved)

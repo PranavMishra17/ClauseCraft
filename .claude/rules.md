@@ -8,6 +8,38 @@
 5. NO PARTIAL IMPLEMENTATIONS - Fully implement or document clearly
 6. PROPER LOGGING SETUP - Use standardized logging configuration
 7. CLEAN CODE STRUCTURE - Follow project organization
+8. TEXT READABILITY - All UI text must be readable with high contrast
+
+## UI/UX Readability Rules
+1. **Text Color Contrast**
+   - Main text: Use gray-800 or darker on light backgrounds
+   - Never use light gray (gray-300/400) for body text
+   - Placeholder text: gray-500 minimum
+   - Ensure WCAG AA compliance (4.5:1 contrast ratio minimum)
+
+2. **Input Fields**
+   - Input text: text-gray-900 (dark text)
+   - Placeholder: placeholder:text-gray-500 or darker
+   - Never rely on default browser gray which is too light
+
+3. **Code/Inline Elements**
+   - Code snippets: text-gray-800 with bg-gray-100 or bg-white
+   - Inline code: High contrast on any background
+
+4. **Labels and Headers**
+   - Labels: text-gray-800 or text-gray-900
+   - Helper text: text-gray-700 minimum (never gray-600 or lighter for important info)
+
+5. **Example of Good Contrast**
+   ```tsx
+   // Good - Readable
+   <p className="text-gray-800">Main text</p>
+   <input className="text-gray-900 placeholder:text-gray-500" />
+
+   // Bad - Too light
+   <p className="text-gray-400">Main text</p>
+   <input className="text-gray-500" />
+   ```
 
 ## File Structure Rules
 - Keep files in appropriate directories (models/, routes/, etc.)

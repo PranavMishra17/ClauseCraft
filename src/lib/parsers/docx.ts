@@ -1,32 +1,16 @@
 /**
  * DOCX Parser - Extracts text from DOCX files line by line
- * Uses mammoth library for parsing
+ * Uses mammoth library for parsing with formatting preservation
  */
 
 import mammoth from 'mammoth';
-import { Line } from './types';
+import { Line, LineFormatting } from './types';
+import { isPlaceholderLine, detectPlaceholders } from './placeholder-detector';
 
 const LINES_PER_PAGE = 40; // Configurable estimate
-const PLACEHOLDER_PATTERNS = [
-  /\{\{.*?\}\}/g,           // {{PLACEHOLDER}}
-  /\[([A-Z_]+)\]/g,         // [CONSTANT_NAME]
-  /_{5,}/g                   // _____
-];
 
 /**
- * Detects if a line contains placeholder text
- */
-function isPlaceholderLine(text: string): boolean {
-  try {
-    return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(text));
-  } catch (error) {
-    console.error('[DOCX_PARSER] Error detecting placeholder:', error);
-    return false;
-  }
-}
-
-/**
- * Parses DOCX file buffer and extracts lines
+ * Parses DOCX file buffer and extracts lines with formatting
  */
 export async function parseDocx(buffer: Buffer): Promise<Line[]> {
   const lines: Line[] = [];
@@ -34,33 +18,70 @@ export async function parseDocx(buffer: Buffer): Promise<Line[]> {
   try {
     console.info('[DOCX_PARSER] Starting DOCX parsing');
 
-    // Extract text from DOCX
-    const result = await mammoth.extractRawText({ buffer });
+    // Extract text with basic HTML to preserve some formatting
+    const result = await mammoth.convertToHtml({ buffer });
 
     if (!result.value) {
       console.warn('[DOCX_PARSER] No text content found in DOCX');
       return lines;
     }
 
-    console.info('[DOCX_PARSER] Text extracted successfully, processing lines');
+    console.info('[DOCX_PARSER] HTML extracted successfully, processing lines');
 
-    // Split into lines and process
-    const rawLines = result.value.split('\n');
+    // Parse HTML to extract text and formatting
+    // For now, we'll extract raw text and detect formatting markers
+    // In the future, we can use a proper HTML parser for better formatting extraction
+    const htmlContent = result.value;
 
-    rawLines.forEach((text, index) => {
-      const lineNumber = index + 1;
+    // Split by common block elements to get lines
+    // IMPORTANT: Use non-capturing group (?:...) to avoid capturing tag names as separate elements
+    const blockElements = htmlContent
+      .split(/<\/?(?:p|div|h[1-6]|li)[^>]*>/gi)
+      .filter(line => line.trim().length > 0);
+
+    blockElements.forEach((htmlLine) => {
+      // Strip HTML tags to get plain text
+      const text = htmlLine.replace(/<[^>]*>/g, '').trim();
+
+      if (text.length === 0) return;
+
+      const lineNumber = lines.length + 1;
       const pageNumber = Math.ceil(lineNumber / LINES_PER_PAGE);
+
+      // Detect placeholders using comprehensive detector
+      const placeholderDetection = detectPlaceholders(text);
+      const isPlaceholder = isPlaceholderLine(text);
+      const placeholderNames = placeholderDetection.placeholders.map(ph => ph.name);
+
+      // Extract basic formatting from HTML
+      const formatting: LineFormatting = {};
+
+      if (htmlLine.includes('<strong>') || htmlLine.includes('<b>')) {
+        formatting.bold = true;
+      }
+      if (htmlLine.includes('<em>') || htmlLine.includes('<i>')) {
+        formatting.italic = true;
+      }
+      if (htmlLine.includes('<u>')) {
+        formatting.underline = true;
+      }
 
       lines.push({
         lineNumber,
-        text: text.trim(),
+        text,
         pageNumber,
         isLocked: false,
-        isPlaceholder: isPlaceholderLine(text)
+        isPlaceholder,
+        formatting: Object.keys(formatting).length > 0 ? formatting : undefined,
+        placeholderNames: placeholderNames.length > 0 ? placeholderNames : undefined
       });
     });
 
     console.info(`[DOCX_PARSER] Successfully parsed ${lines.length} lines from ${Math.ceil(lines.length / LINES_PER_PAGE)} estimated pages`);
+
+    // Count placeholder lines
+    const placeholderLineCount = lines.filter(line => line.isPlaceholder).length;
+    console.info(`[DOCX_PARSER] Detected ${placeholderLineCount} placeholder lines`);
 
     // Log warnings if any
     if (result.messages && result.messages.length > 0) {

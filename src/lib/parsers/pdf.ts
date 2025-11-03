@@ -1,28 +1,11 @@
 /**
  * PDF Parser - Extracts text from PDF files with page tracking
- * Uses pdf-parse library
+ * Uses pdf-parse library with formatting support
  */
 
 import pdf from 'pdf-parse';
-import { Line } from './types';
-
-const PLACEHOLDER_PATTERNS = [
-  /\{\{.*?\}\}/g,           // {{PLACEHOLDER}}
-  /\[([A-Z_]+)\]/g,         // [CONSTANT_NAME]
-  /_{5,}/g                   // _____
-];
-
-/**
- * Detects if a line contains placeholder text
- */
-function isPlaceholderLine(text: string): boolean {
-  try {
-    return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(text));
-  } catch (error) {
-    console.error('[PDF_PARSER] Error detecting placeholder:', error);
-    return false;
-  }
-}
+import { Line, LineFormatting } from './types';
+import { isPlaceholderLine, detectPlaceholders } from './placeholder-detector';
 
 /**
  * Parses PDF file buffer and extracts lines with accurate page numbers
@@ -76,12 +59,18 @@ export async function parsePdf(buffer: Buffer): Promise<Line[]> {
 
           // Skip empty lines but keep track of them for formatting
           if (text || i === 0) {
+            // Detect placeholders using comprehensive detector
+            const placeholderDetection = detectPlaceholders(text);
+            const isPlaceholder = isPlaceholderLine(text);
+            const placeholderNames = placeholderDetection.placeholders.map(ph => ph.name);
+
             lines.push({
               lineNumber: currentLineNumber++,
               text,
               pageNumber: pageNum,
               isLocked: false,
-              isPlaceholder: isPlaceholderLine(text)
+              isPlaceholder,
+              placeholderNames: placeholderNames.length > 0 ? placeholderNames : undefined
             });
           }
         }
@@ -91,6 +80,10 @@ export async function parsePdf(buffer: Buffer): Promise<Line[]> {
     }
 
     console.info(`[PDF_PARSER] Successfully parsed ${lines.length} lines from ${data.numpages} pages`);
+
+    // Count placeholder lines
+    const placeholderLineCount = lines.filter(line => line.isPlaceholder).length;
+    console.info(`[PDF_PARSER] Detected ${placeholderLineCount} placeholder lines`);
 
     return lines;
 
@@ -122,17 +115,28 @@ export async function parsePdfSimple(buffer: Buffer): Promise<Line[]> {
     rawLines.forEach((text, index) => {
       const lineNumber = index + 1;
       const pageNumber = Math.ceil(lineNumber / linesPerPage);
+      const trimmedText = text.trim();
+
+      // Detect placeholders using comprehensive detector
+      const placeholderDetection = detectPlaceholders(trimmedText);
+      const isPlaceholder = isPlaceholderLine(trimmedText);
+      const placeholderNames = placeholderDetection.placeholders.map(ph => ph.name);
 
       lines.push({
         lineNumber,
-        text: text.trim(),
+        text: trimmedText,
         pageNumber,
         isLocked: false,
-        isPlaceholder: isPlaceholderLine(text)
+        isPlaceholder,
+        placeholderNames: placeholderNames.length > 0 ? placeholderNames : undefined
       });
     });
 
     console.info(`[PDF_PARSER] Successfully parsed ${lines.length} lines from ${data.numpages} pages`);
+
+    // Count placeholder lines
+    const placeholderLineCount = lines.filter(line => line.isPlaceholder).length;
+    console.info(`[PDF_PARSER] Detected ${placeholderLineCount} placeholder lines`);
 
     return lines;
 

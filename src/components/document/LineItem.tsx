@@ -49,8 +49,20 @@ export default function LineItem({
 
       {/* Text Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-mono whitespace-pre-wrap break-words">
+        <p
+          className="text-sm font-mono whitespace-pre-wrap break-words text-gray-900"
+          style={{
+            fontWeight: line.formatting?.bold ? 'bold' : 'normal',
+            fontStyle: line.formatting?.italic ? 'italic' : 'normal',
+            textDecoration: line.formatting?.underline ? 'underline' : 'none'
+          }}
+        >
           {line.text || ' '}
+          {line.isPlaceholder && line.placeholderNames && line.placeholderNames.length > 0 && (
+            <span className="ml-2 text-xs text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
+              {line.placeholderNames.join(', ')}
+            </span>
+          )}
         </p>
       </div>
 
