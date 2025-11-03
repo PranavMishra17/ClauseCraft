@@ -1,11 +1,11 @@
-# ClauseCraft
+# ClauseCraft [![Website](https://img.shields.io/badge/-Live%20App-228B22?style=for-the-badge&logo=vercel&logoColor=white)](https://clause-craft-bay.vercel.app)
 
 <p align="center">
   <img src="/public/images/1.png" alt="ClauseCraft" width="70%">
 </p>
 
 An agentic document editor powered by AI that enables intelligent document editing through conversational commands and line-based citations.
-[![Live Site](https://img.shields.io/badge/-Live%20App-228B22?style=for-the-badge&logo=vercel&logoColor=white)](https://clause-craft-bay.vercel.app)
+
 
 
 ## Documentation
