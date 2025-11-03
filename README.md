@@ -1,8 +1,12 @@
-# ClauseCraft
+# ClauseCraft - Agentic Document Editor -  [![Website](https://img.shields.io/badge/-Live%20App-228B22?style=for-the-badge&logo=vercel&logoColor=white)](https://clause-craft-bay.vercel.app)
 
-![ClauseCraft](/public/images/1.png)
+<p align="center">
+  <img src="/public/images/1.png" alt="ClauseCraft" width="70%">
+</p>
 
 An agentic document editor powered by AI that enables intelligent document editing through conversational commands and line-based citations.
+
+
 
 ## Documentation
 
@@ -192,15 +196,6 @@ All tools respect line locks and provide detailed error handling.
 - `/src/components` - React components
 - `/src/app/api` - API routes
 
-### Code Standards
-
-Follow the rules in `.claude/rules.md`:
-
-- Comprehensive logging with [MODULE] prefix
-- Graceful error handling with try-catch
-- No hardcoded values - use environment variables
-- Clean code structure with TypeScript types
-
 ### Testing
 
 ```bash
@@ -217,12 +212,6 @@ npm run build       # Test production build
 3. Add `GEMINI_API_KEY` environment variable
 4. Deploy
 
-### Docker
-
-```bash
-docker build -t clausecraft .
-docker run -p 3000:3000 -e GEMINI_API_KEY=your_key clausecraft
-```
 
 ## File Format Support
 
