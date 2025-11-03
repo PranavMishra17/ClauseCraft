@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Document, Line, Message, Chat } from '@/lib/parsers/types';
 import { loadChats, saveChats, createChat, saveDocument, loadDocument } from '@/lib/storage/chats';
 import { exportDocument } from '@/lib/export';
@@ -345,29 +346,78 @@ export default function Home() {
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">ClauseCraft</h1>
-            <p className="text-sm text-gray-600">Agentic Document Editor</p>
+        <div className="flex items-center justify-between relative">
+          {/* Left - Title with Logo */}
+          <div className="flex items-center gap-3 flex-1">
+            <Image
+              src="/images/title.png"
+              alt="ClauseCraft Logo"
+              width={48}
+              height={48}
+              className="rounded-lg"
+            />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">ClauseCraft</h1>
+              <p className="text-sm text-gray-600">Agentic Document Editor</p>
+            </div>
           </div>
 
-          {/* Upload Button */}
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-            <Upload className="w-5 h-5" />
-            <span className="font-medium">
-              {isUploading ? 'Uploading...' : 'Upload Document'}
-            </span>
-            <input
-              type="file"
-              accept=".docx,.pdf,.md,.txt"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
-              }}
-              className="hidden"
-              disabled={isUploading}
-            />
-          </label>
+          {/* Center - Upload Button */}
+          <div className="flex-1 flex justify-center">
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+              <Upload className="w-5 h-5" />
+              <span className="font-medium">
+                {isUploading ? 'Uploading...' : 'Upload Document'}
+              </span>
+              <input
+                type="file"
+                accept=".docx,.pdf,.md,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                className="hidden"
+                disabled={isUploading}
+              />
+            </label>
+          </div>
+
+          {/* Right - Personal Image with Hover Effect */}
+          <div className="flex-1 flex justify-end">
+            <div className="group relative">
+              <a
+                href="https://portfolio-pranav-mishra-paranoid.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                {/* Profile Image with Puff Effect */}
+                <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-300 group-hover:border-blue-500 group-hover:scale-110 transition-all duration-300">
+                  <Image
+                    src="/images/me.jpg"
+                    alt="Pranav Mishra"
+                    width={56}
+                    height={56}
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Sliding Text with Wave Background */}
+                <div className="absolute top-0 right-full h-14 flex items-center pointer-events-none pr-3">
+                  <div
+                    className="h-10 bg-gradient-to-r from-red-500 via-blue-600 to-black opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out rounded-full px-5 flex items-center whitespace-nowrap -translate-x-8 group-hover:translate-x-0 group-hover:animate-wave shadow-lg"
+                    style={{
+                      backgroundSize: '200% 100%'
+                    }}
+                  >
+                    <span className="text-white font-bold text-sm drop-shadow-lg">
+                      PRANAV MISHRA - View more of my work →
+                    </span>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Error Display */}

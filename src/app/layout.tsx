@@ -4,6 +4,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'ClauseCraft - Agentic Document Editor',
   description: 'AI-powered document editor with line-based editing and citations',
+  icons: {
+    icon: '/images/title.png',
+  },
 }
 
 export default function RootLayout({
