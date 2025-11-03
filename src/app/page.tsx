@@ -24,7 +24,9 @@ import ChatInterface from '@/components/chat/ChatInterface';
 import ChatHistory from '@/components/sidebar/ChatHistory';
 import InitialSetupModal from '@/components/modals/InitialSetupModal';
 import FormatPreservePreview from '@/components/document/FormatPreservePreview';
-import { Upload, AlertCircle } from 'lucide-react';
+import SettingsModal from '@/components/modals/SettingsModal';
+import StatusBar from '@/components/layout/StatusBar';
+import { Upload, AlertCircle, Settings } from 'lucide-react';
 
 export default function Home() {
   const [document, setDocument] = useState<Document | null>(null);
@@ -35,6 +37,7 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isRunningLLMDetection, setIsRunningLLMDetection] = useState(false);
+  const [selectedLine, setSelectedLine] = useState<Line | null>(null);
 
   // Edit tracking state
   const [editHistory, setEditHistory] = useState<EditHistory | null>(null);
@@ -43,11 +46,55 @@ export default function Home() {
   // Preview modal state
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  // Load chats from localStorage on mount
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState<string | null>(null);
+  const [chatWidth, setChatWidth] = useState(500); // Default 500px
+  const [isResizingChat, setIsResizingChat] = useState(false);
+
+  // Load chats and custom API key from localStorage on mount
   useEffect(() => {
     const storedChats = loadChats();
     setChats(storedChats);
+
+    // Load custom API key if exists
+    const storedApiKey = localStorage.getItem('clausecraft-custom-api-key');
+    if (storedApiKey) {
+      setCustomApiKey(storedApiKey);
+    }
+
+    // Load chat width if exists
+    const storedChatWidth = localStorage.getItem('clausecraft-chat-width');
+    if (storedChatWidth) {
+      setChatWidth(parseInt(storedChatWidth, 10));
+    }
   }, []);
+
+  // Handle chat resize
+  useEffect(() => {
+    if (!isResizingChat) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      // Clamp width between 400px and 700px
+      const clampedWidth = Math.max(400, Math.min(700, newWidth));
+      setChatWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingChat(false);
+      // Save width to localStorage
+      localStorage.setItem('clausecraft-chat-width', chatWidth.toString());
+    };
+
+    window.document.addEventListener('mousemove', handleMouseMove);
+    window.document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.document.removeEventListener('mousemove', handleMouseMove);
+      window.document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingChat, chatWidth]);
 
   // Handle file upload
   const handleFileUpload = async (file: File) => {
@@ -168,7 +215,7 @@ export default function Home() {
       setChats(updatedChats);
       saveChats(updatedChats);
 
-      // Send to API with optional custom prompt
+      // Send to API with optional custom prompt and API key
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -176,7 +223,8 @@ export default function Home() {
           message: messageText,
           document,
           chatHistory: currentChat.messages,
-          customPrompt: customPrompt || undefined
+          customPrompt: customPrompt || undefined,
+          customApiKey: customApiKey || undefined
         })
       });
 
@@ -417,7 +465,10 @@ export default function Home() {
       const response = await fetch('/api/detect-placeholders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lines: linesData })
+        body: JSON.stringify({
+          lines: linesData,
+          customApiKey: customApiKey || undefined
+        })
       });
 
       const data = await response.json();
@@ -459,12 +510,26 @@ export default function Home() {
     }
   };
 
+  // Handle API key change
+  const handleApiKeyChange = (apiKey: string) => {
+    setCustomApiKey(apiKey);
+    localStorage.setItem('clausecraft-custom-api-key', apiKey);
+    console.log('[API_KEY] Custom API key saved');
+  };
+
+  // Handle API key clear
+  const handleClearApiKey = () => {
+    setCustomApiKey(null);
+    localStorage.removeItem('clausecraft-custom-api-key');
+    console.log('[API_KEY] Cleared custom API key, using default');
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between relative">
-          {/* Left - Title with Logo */}
+          {/* Left - Title with Logo and Settings */}
           <div className="flex items-center gap-3 flex-1">
             <Image
               src="/images/title.png"
@@ -477,6 +542,13 @@ export default function Home() {
               <h1 className="text-2xl font-bold text-gray-900">ClauseCraft</h1>
               <p className="text-sm text-gray-600">Agentic Document Editor</p>
             </div>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="ml-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
 
           {/* Center - Upload Button */}
@@ -555,7 +627,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pb-10">
         {/* Left Sidebar - Chat History (Collapsible) */}
         <ChatHistory
           chats={chats}
@@ -573,13 +645,25 @@ export default function Home() {
             onExport={handleExport}
             onFormatPreservingExport={handleFormatPreservingExport}
             hasEdits={editHistory ? editHistory.edits.length > 0 : false}
+            onUpload={handleFileUpload}
+            isUploading={isUploading}
+            selectedLine={selectedLine}
+            onLineSelect={setSelectedLine}
             onRunLLMDetection={handleRunLLMDetection}
             isRunningLLMDetection={isRunningLLMDetection}
           />
         </div>
 
         {/* Right - Chat Interface */}
-        <div className="w-[500px] flex-shrink-0">
+        <div className="flex-shrink-0 relative" style={{ width: `${chatWidth}px` }}>
+          {/* Resize Handle */}
+          <div
+            onMouseDown={() => setIsResizingChat(true)}
+            className={`absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors z-20 ${
+              isResizingChat ? 'bg-blue-500' : ''
+            }`}
+            title="Drag to resize chat"
+          />
           <ChatInterface
             messages={currentChat?.messages || []}
             onSendMessage={handleSendMessage}
@@ -587,6 +671,14 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* Status Bar */}
+      <StatusBar
+        document={document}
+        selectedLine={selectedLine}
+        onRunLLMDetection={handleRunLLMDetection}
+        isRunningLLMDetection={isRunningLLMDetection}
+      />
 
       {/* Initial Setup Modal */}
       {document && (
@@ -610,6 +702,16 @@ export default function Home() {
           onDownload={handleDownloadFromPreview}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        chats={chats}
+        customApiKey={customApiKey}
+        onApiKeyChange={handleApiKeyChange}
+        onClearApiKey={handleClearApiKey}
+      />
     </div>
   );
 }

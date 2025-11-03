@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { message, document, chatHistory = [], customPrompt } = body;
+    const { message, document, chatHistory = [], customPrompt, customApiKey } = body;
 
     // Validate inputs
     if (!message || message.trim().length === 0) {
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get API key from environment
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Get API key - use custom key if provided, otherwise use environment variable
+    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       console.error('[CHAT_API] GEMINI_API_KEY not configured');
@@ -50,6 +50,12 @@ export async function POST(request: NextRequest) {
         { error: 'Gemini API key not configured' },
         { status: 500 }
       );
+    }
+
+    if (customApiKey) {
+      console.info('[CHAT_API] Using custom API key');
+    } else {
+      console.info('[CHAT_API] Using default API key from environment');
     }
 
     console.info('[CHAT_API] Processing message with citations');

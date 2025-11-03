@@ -4,9 +4,9 @@
  * ChatHistory Component - Collapsible sidebar showing previous chats
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chat } from '@/lib/parsers/types';
-import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 
 interface ChatHistoryProps {
   chats: Chat[];
@@ -24,6 +24,51 @@ export default function ChatHistory({
   onDeleteChat
 }: ChatHistoryProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(240); // Default 240px
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Load sidebar width from localStorage on mount
+  useEffect(() => {
+    const savedWidth = localStorage.getItem('clausecraft-sidebar-width');
+    if (savedWidth) {
+      setSidebarWidth(parseInt(savedWidth, 10));
+    }
+  }, []);
+
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Handle resize
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!sidebarRef.current) return;
+
+      const newWidth = e.clientX;
+      // Clamp width between 200px and 400px
+      const clampedWidth = Math.max(200, Math.min(400, newWidth));
+      setSidebarWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Save width to localStorage
+      localStorage.setItem('clausecraft-sidebar-width', sidebarWidth.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -49,7 +94,13 @@ export default function ChatHistory({
   };
 
   return (
-    <div className={`h-full flex flex-col bg-gray-50 border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-64'}`}>
+    <div
+      ref={sidebarRef}
+      className={`h-full flex flex-col bg-gray-50 border-r border-gray-200 transition-all duration-300 relative ${
+        isCollapsed ? 'w-12' : ''
+      }`}
+      style={!isCollapsed ? { width: `${sidebarWidth}px` } : undefined}
+    >
       {/* Collapse/Expand Button */}
       <div className="flex-shrink-0 p-2 border-b border-gray-200 bg-white flex justify-end">
         <button
@@ -160,6 +211,21 @@ export default function ChatHistory({
               {chats.length} chats
             </div>
           )}
+        </div>
+      )}
+
+      {/* Resize Handle */}
+      {!isCollapsed && (
+        <div
+          onMouseDown={handleResizeStart}
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors ${
+            isResizing ? 'bg-blue-500' : ''
+          } group`}
+          title="Drag to resize"
+        >
+          <div className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <GripVertical className="w-4 h-4 text-gray-400" />
+          </div>
         </div>
       )}
     </div>

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     console.info('[DETECT_API] Received LLM detection request');
 
     const body = await request.json();
-    const { lines } = body;
+    const { lines, customApiKey } = body;
 
     if (!lines || !Array.isArray(lines)) {
       return NextResponse.json(
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get API key from environment
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Get API key - use custom key if provided, otherwise use environment variable
+    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       console.error('[DETECT_API] GEMINI_API_KEY not configured');
@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
         { error: 'Gemini API key not configured' },
         { status: 500 }
       );
+    }
+
+    if (customApiKey) {
+      console.info('[DETECT_API] Using custom API key');
+    } else {
+      console.info('[DETECT_API] Using default API key from environment');
     }
 
     console.info(`[DETECT_API] Processing ${lines.length} lines with LLM detection`);
