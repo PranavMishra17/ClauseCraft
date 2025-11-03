@@ -1,4 +1,4 @@
-# ClauseCraft [![Website](https://img.shields.io/badge/-Live%20App-228B22?style=for-the-badge&logo=vercel&logoColor=white)](https://clause-craft-bay.vercel.app)
+# ClauseCraft - Agentic Document Editor -  [![Website](https://img.shields.io/badge/-Live%20App-228B22?style=for-the-badge&logo=vercel&logoColor=white)](https://clause-craft-bay.vercel.app)
 
 <p align="center">
   <img src="/public/images/1.png" alt="ClauseCraft" width="70%">
