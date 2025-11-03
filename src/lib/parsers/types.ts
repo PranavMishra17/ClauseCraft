@@ -119,3 +119,32 @@ export interface EditResult {
   modifiedLines: number[];
   error?: string;
 }
+
+// Edit tracking for format-preserving export
+export interface LineEdit {
+  lineNumber: number;
+  originalText: string;
+  newText: string;
+  timestamp: Date;
+  operation: 'replace' | 'insert' | 'delete';
+}
+
+export interface EditHistory {
+  edits: LineEdit[];
+  documentId: string;
+}
+
+// Original document storage
+export interface OriginalDocument {
+  documentId: string;
+  fileBuffer: ArrayBuffer;
+  fileName: string;
+  format: 'docx' | 'pdf' | 'markdown';
+  uploadedAt: Date;
+}
+
+// Extended document with edit tracking
+export interface DocumentWithHistory extends Document {
+  editHistory: EditHistory;
+  originalFileId?: string;
+}

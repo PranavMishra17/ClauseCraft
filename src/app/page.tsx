@@ -6,13 +6,24 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Document, Line, Message, Chat } from '@/lib/parsers/types';
-import { loadChats, saveChats, createChat, saveDocument, loadDocument } from '@/lib/storage/chats';
-import { exportDocument } from '@/lib/export';
+import { Document, Line, Message, Chat, EditHistory, OriginalDocument } from '@/lib/parsers/types';
+import {
+  loadChats,
+  saveChats,
+  createChat,
+  saveDocument,
+  loadDocument,
+  saveEditHistory,
+  loadEditHistory,
+  saveOriginalFile,
+  loadOriginalFile
+} from '@/lib/storage/chats';
+import { exportDocument, exportDocumentPreserveFormat } from '@/lib/export';
 import DocumentViewer from '@/components/document/DocumentViewer';
 import ChatInterface from '@/components/chat/ChatInterface';
 import ChatHistory from '@/components/sidebar/ChatHistory';
 import InitialSetupModal from '@/components/modals/InitialSetupModal';
+import FormatPreservePreview from '@/components/document/FormatPreservePreview';
 import { Upload, AlertCircle } from 'lucide-react';
 
 export default function Home() {
@@ -24,6 +35,13 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isRunningLLMDetection, setIsRunningLLMDetection] = useState(false);
+
+  // Edit tracking state
+  const [editHistory, setEditHistory] = useState<EditHistory | null>(null);
+  const [originalFile, setOriginalFile] = useState<OriginalDocument | null>(null);
+
+  // Preview modal state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Load chats from localStorage on mount
   useEffect(() => {
@@ -38,6 +56,10 @@ export default function Home() {
       setError(null);
 
       console.log('Uploading file:', file.name);
+
+      // Store original file for format-preserving export
+      const fileBuffer = await file.arrayBuffer();
+      const format = file.name.endsWith('.docx') ? 'docx' : file.name.endsWith('.pdf') ? 'pdf' : 'markdown';
 
       const formData = new FormData();
       formData.append('file', file);
@@ -58,6 +80,25 @@ export default function Home() {
 
       // Save document to localStorage
       saveDocument(data.document);
+
+      // Store original file in IndexedDB for format-preserving export
+      const originalDoc: OriginalDocument = {
+        documentId: data.document.id,
+        fileBuffer,
+        fileName: file.name,
+        format,
+        uploadedAt: new Date()
+      };
+      await saveOriginalFile(originalDoc);
+      setOriginalFile(originalDoc);
+
+      // Initialize edit history
+      const history: EditHistory = {
+        documentId: data.document.id,
+        edits: []
+      };
+      saveEditHistory(history);
+      setEditHistory(history);
 
       // If current chat exists and has no messages, reuse it (rename it to filename)
       // Otherwise create a new chat
@@ -175,6 +216,37 @@ export default function Home() {
       if (data.document) {
         setDocument(data.document);
         saveDocument(data.document);
+
+        // Track edits for format-preserving export
+        if (data.actions && editHistory) {
+          const newEdits = data.actions
+            .filter((action: any) => action.type === 'edit' && action.success && action.details?.modifiedLines)
+            .flatMap((action: any) => {
+              const modifiedLines = action.details.modifiedLines as number[];
+              return modifiedLines.map((lineNum: number) => {
+                const oldLine = document.lines.find(l => l.lineNumber === lineNum);
+                const newLine = data.document.lines.find((l: Line) => l.lineNumber === lineNum);
+
+                return {
+                  lineNumber: lineNum,
+                  originalText: oldLine?.text || '',
+                  newText: newLine?.text || '',
+                  timestamp: new Date(),
+                  operation: action.details.operation as 'replace' | 'insert' | 'delete'
+                };
+              });
+            });
+
+          if (newEdits.length > 0) {
+            const updatedHistory: EditHistory = {
+              ...editHistory,
+              edits: [...editHistory.edits, ...newEdits]
+            };
+            setEditHistory(updatedHistory);
+            saveEditHistory(updatedHistory);
+            console.info(`[EDIT_TRACKING] Tracked ${newEdits.length} new edits`);
+          }
+        }
       }
 
     } catch (error) {
@@ -244,7 +316,7 @@ export default function Home() {
     }
   };
 
-  // Handle export
+  // Handle export (regular - uses current preview state)
   const handleExport = async (format: 'docx' | 'pdf' | 'markdown') => {
     if (!document) {
       setError('No document to export');
@@ -254,6 +326,51 @@ export default function Home() {
     try {
       setError(null);
       await exportDocument(document, format);
+    } catch (error) {
+      console.error('Error exporting document:', error);
+      setError(error instanceof Error ? error.message : 'Failed to export document');
+    }
+  };
+
+  // Handle format-preserving export (shows preview modal)
+  const handleFormatPreservingExport = async (format: 'docx' | 'pdf' | 'markdown') => {
+    if (!document) {
+      setError('No document to export');
+      return;
+    }
+
+    try {
+      setError(null);
+
+      // Load original file and edit history if not already loaded
+      const original = originalFile || await loadOriginalFile(document.id);
+      const history = editHistory || loadEditHistory(document.id);
+
+      if (original && history && history.edits.length > 0) {
+        // Show preview modal
+        setShowPreviewModal(true);
+      } else {
+        // Fallback to regular export if no edits or original file
+        console.info('[EXPORT] No edits or original file, using regular export');
+        await exportDocument(document, format);
+      }
+    } catch (error) {
+      console.error('Error opening preview:', error);
+      setError(error instanceof Error ? error.message : 'Failed to open preview');
+    }
+  };
+
+  // Handle actual download from preview modal
+  const handleDownloadFromPreview = async () => {
+    if (!document || !originalFile || !editHistory) {
+      setError('Missing document data');
+      return;
+    }
+
+    try {
+      setError(null);
+      console.info('[EXPORT] Using format-preserving export');
+      await exportDocumentPreserveFormat(document, originalFile, editHistory);
     } catch (error) {
       console.error('Error exporting document:', error);
       setError(error instanceof Error ? error.message : 'Failed to export document');
@@ -454,6 +571,8 @@ export default function Home() {
             document={document}
             onLineToggleLock={handleLineToggleLock}
             onExport={handleExport}
+            onFormatPreservingExport={handleFormatPreservingExport}
+            hasEdits={editHistory ? editHistory.edits.length > 0 : false}
             onRunLLMDetection={handleRunLLMDetection}
             isRunningLLMDetection={isRunningLLMDetection}
           />
@@ -477,6 +596,18 @@ export default function Home() {
           onAutoLock={handleAutoLock}
           placeholderCount={document.lines.filter(line => line.isPlaceholder).length}
           totalLines={document.lines.length}
+        />
+      )}
+
+      {/* Format-Preserving Export Preview Modal */}
+      {document && originalFile && editHistory && (
+        <FormatPreservePreview
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          document={document}
+          originalFile={originalFile}
+          editHistory={editHistory}
+          onDownload={handleDownloadFromPreview}
         />
       )}
     </div>

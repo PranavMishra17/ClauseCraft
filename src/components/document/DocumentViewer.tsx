@@ -13,6 +13,8 @@ interface DocumentViewerProps {
   document: Document | null;
   onLineToggleLock?: (line: Line) => void;
   onExport?: (format: 'docx' | 'pdf' | 'markdown') => void;
+  onFormatPreservingExport?: (format: 'docx' | 'pdf' | 'markdown') => void;
+  hasEdits?: boolean; // Whether document has been edited (show format-preserving option)
   onRunLLMDetection?: () => void;
   isRunningLLMDetection?: boolean;
 }
@@ -21,6 +23,8 @@ export default function DocumentViewer({
   document,
   onLineToggleLock,
   onExport,
+  onFormatPreservingExport,
+  hasEdits = false,
   onRunLLMDetection,
   isRunningLLMDetection = false
 }: DocumentViewerProps) {
@@ -104,7 +108,10 @@ export default function DocumentViewer({
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-200">
+                    Preview Export (Current State)
+                  </div>
                   <button
                     onClick={() => onExport('docx')}
                     className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
@@ -123,6 +130,35 @@ export default function DocumentViewer({
                   >
                     Export as Markdown
                   </button>
+
+                  {/* Format-Preserving Export (only show if edits exist) */}
+                  {hasEdits && onFormatPreservingExport && (
+                    <>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="px-3 py-2 text-xs font-semibold text-green-600 border-b border-gray-200">
+                        ✨ Format-Preserving Export
+                      </div>
+                      <button
+                        onClick={() => onFormatPreservingExport('docx')}
+                        className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 font-medium"
+                        title="Applies edits to original file - preserves all formatting"
+                      >
+                        🎨 Export DOCX (Original Style)
+                      </button>
+                      <button
+                        onClick={() => onFormatPreservingExport('pdf')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                      >
+                        Export PDF
+                      </button>
+                      <button
+                        onClick={() => onFormatPreservingExport('markdown')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                      >
+                        Export Markdown
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}

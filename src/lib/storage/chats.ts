@@ -1,12 +1,16 @@
 /**
  * Chat Storage - LocalStorage wrapper for persisting chat history
+ * Includes IndexedDB for original file storage (format preservation)
  */
 
-import { Chat, Message, Document } from '../parsers/types';
+import { Chat, Message, Document, OriginalDocument, EditHistory } from '../parsers/types';
 import { randomUUID } from 'crypto';
 
 const STORAGE_KEY = 'clausecraft-chats';
 const DOCUMENT_STORAGE_KEY = 'clausecraft-documents';
+const EDIT_HISTORY_KEY = 'clausecraft-edit-history';
+const INDEXEDDB_NAME = 'ClauseCraft';
+const ORIGINAL_FILES_STORE = 'original-files';
 
 /**
  * Check if localStorage is available
@@ -287,6 +291,7 @@ export function clearAllStorage(): boolean {
 
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(DOCUMENT_STORAGE_KEY);
+    localStorage.removeItem(EDIT_HISTORY_KEY);
 
     console.info('[STORAGE] Cleared all storage');
 
@@ -294,6 +299,175 @@ export function clearAllStorage(): boolean {
 
   } catch (error) {
     console.error('[STORAGE] Error clearing storage:', error);
+    return false;
+  }
+}
+
+// ========== EDIT TRACKING SYSTEM ==========
+
+/**
+ * Save edit history for a document
+ */
+export function saveEditHistory(history: EditHistory): boolean {
+  try {
+    if (!isLocalStorageAvailable()) {
+      console.warn('[STORAGE] localStorage not available');
+      return false;
+    }
+
+    const stored = localStorage.getItem(EDIT_HISTORY_KEY);
+    const histories: Record<string, EditHistory> = stored ? JSON.parse(stored) : {};
+
+    histories[history.documentId] = history;
+
+    localStorage.setItem(EDIT_HISTORY_KEY, JSON.stringify(histories));
+
+    console.info(`[STORAGE] Saved edit history for document ${history.documentId} (${history.edits.length} edits)`);
+
+    return true;
+
+  } catch (error) {
+    console.error('[STORAGE] Error saving edit history:', error);
+    return false;
+  }
+}
+
+/**
+ * Load edit history for a document
+ */
+export function loadEditHistory(documentId: string): EditHistory | null {
+  try {
+    if (!isLocalStorageAvailable()) {
+      return null;
+    }
+
+    const stored = localStorage.getItem(EDIT_HISTORY_KEY);
+
+    if (!stored) {
+      return { documentId, edits: [] };
+    }
+
+    const histories: Record<string, EditHistory> = JSON.parse(stored);
+    const history = histories[documentId];
+
+    if (!history) {
+      return { documentId, edits: [] };
+    }
+
+    // Convert date strings back to Date objects
+    history.edits.forEach(edit => {
+      edit.timestamp = new Date(edit.timestamp);
+    });
+
+    console.info(`[STORAGE] Loaded edit history for document ${documentId} (${history.edits.length} edits)`);
+
+    return history;
+
+  } catch (error) {
+    console.error('[STORAGE] Error loading edit history:', error);
+    return { documentId, edits: [] };
+  }
+}
+
+// ========== INDEXEDDB FOR ORIGINAL FILES ==========
+
+/**
+ * Open IndexedDB connection
+ */
+async function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(INDEXEDDB_NAME, 1);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+
+      if (!db.objectStoreNames.contains(ORIGINAL_FILES_STORE)) {
+        const store = db.createObjectStore(ORIGINAL_FILES_STORE, { keyPath: 'documentId' });
+        store.createIndex('fileName', 'fileName', { unique: false });
+        console.info('[STORAGE] Created IndexedDB object store for original files');
+      }
+    };
+  });
+}
+
+/**
+ * Save original file to IndexedDB
+ */
+export async function saveOriginalFile(original: OriginalDocument): Promise<boolean> {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([ORIGINAL_FILES_STORE], 'readwrite');
+    const store = transaction.objectStore(ORIGINAL_FILES_STORE);
+
+    await new Promise((resolve, reject) => {
+      const request = store.put(original);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(request.error);
+    });
+
+    console.info(`[STORAGE] Saved original file ${original.documentId} (${original.fileName})`);
+
+    return true;
+
+  } catch (error) {
+    console.error('[STORAGE] Error saving original file:', error);
+    return false;
+  }
+}
+
+/**
+ * Load original file from IndexedDB
+ */
+export async function loadOriginalFile(documentId: string): Promise<OriginalDocument | null> {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([ORIGINAL_FILES_STORE], 'readonly');
+    const store = transaction.objectStore(ORIGINAL_FILES_STORE);
+
+    const original = await new Promise<OriginalDocument | null>((resolve, reject) => {
+      const request = store.get(documentId);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+
+    if (original) {
+      console.info(`[STORAGE] Loaded original file ${documentId}`);
+    } else {
+      console.warn(`[STORAGE] Original file not found: ${documentId}`);
+    }
+
+    return original;
+
+  } catch (error) {
+    console.error('[STORAGE] Error loading original file:', error);
+    return null;
+  }
+}
+
+/**
+ * Delete original file from IndexedDB
+ */
+export async function deleteOriginalFile(documentId: string): Promise<boolean> {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([ORIGINAL_FILES_STORE], 'readwrite');
+    const store = transaction.objectStore(ORIGINAL_FILES_STORE);
+
+    await new Promise((resolve, reject) => {
+      const request = store.delete(documentId);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(request.error);
+    });
+
+    console.info(`[STORAGE] Deleted original file ${documentId}`);
+
+    return true;
+
+  } catch (error) {
+    console.error('[STORAGE] Error deleting original file:', error);
     return false;
   }
 }

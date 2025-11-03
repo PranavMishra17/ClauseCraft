@@ -1,6 +1,15 @@
 # ClauseCraft
 
+![ClauseCraft](/public/images/1.png)
+
 An agentic document editor powered by AI that enables intelligent document editing through conversational commands and line-based citations.
+
+## Documentation
+
+- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 minutes
+- **[Project Summary](PROJECT_SUMMARY.md)** - Complete feature overview and implementation details
+- **[Architecture](Architecture.md)** - System design and technical architecture
+- **[Libraries Guide](LIBRARIES.md)** - Export and preview library documentation
 
 ## Features
 
@@ -11,6 +20,8 @@ An agentic document editor powered by AI that enables intelligent document editi
 - **Placeholder Detection**: Automatically highlights {{PLACEHOLDERS}}, [CONSTANTS], and _____ patterns
 - **Chat History**: Persistent chat history with localStorage (for now, will switch to Supabase)
 - **Real-Time Editing**: See document changes instantly as AI makes edits
+
+![ClauseCraft Screenshot](/public/images/2.png)
 
 ## Architecture
 
@@ -239,15 +250,6 @@ docker run -p 3000:3000 -e GEMINI_API_KEY=your_key clausecraft
 - Complex formatting may be simplified
 - Maximum file size: 10MB
 
-## Future Enhancements
-
-- [ ] Real-time collaboration
-- [ ] Version history
-- [ ] Advanced export options (styling, formatting)
-- [ ] Support for more file formats (RTF, ODT)
-- [ ] Custom AI models
-- [ ] Document templates
-- [ ] Batch operations
 
 ## License
 
@@ -257,10 +259,18 @@ MIT License - see LICENSE file
 
 Contributions welcome! Please read CONTRIBUTING.md first.
 
+### Connect with me
+
+[![Portfolio](https://img.shields.io/badge/-Portfolio-000?style=for-the-badge&logo=vercel&logoColor=white)](https://portfolio-pranav-mishra-paranoid.vercel.app)
+[![LinkedIn](https://img.shields.io/badge/-LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pranavgamedev/)
+[![Resume](https://img.shields.io/badge/-Resume-4B0082?style=for-the-badge&logo=read-the-docs&logoColor=white)](https://portfolio-pranav-mishra-paranoid.vercel.app/resume)
+[![YouTube](https://img.shields.io/badge/-YouTube-8B0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/@parano1dgames/featured)
+[![Hugging Face](https://img.shields.io/badge/-Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/Paranoiid)
+
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/yourusername/clausecraft/issues
+- GitHub Issues: https://github.com/PranavMishra17/ClauseCraft/issues
 - Documentation: Check the /docs folder
 
 ## Acknowledgments
