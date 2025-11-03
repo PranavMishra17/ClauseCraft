@@ -240,7 +240,7 @@ async function reconstructDocx(paragraphs: DocxParagraph[]): Promise<Blob> {
     });
 
     // Determine alignment
-    let alignment = AlignmentType.LEFT;
+    let alignment: typeof AlignmentType[keyof typeof AlignmentType] = AlignmentType.LEFT;
     if (para.formatting.alignment === 'center') {
       alignment = AlignmentType.CENTER;
     } else if (para.formatting.alignment === 'right') {
@@ -275,7 +275,7 @@ async function reconstructDocx(paragraphs: DocxParagraph[]): Promise<Blob> {
 
   // Generate blob
   const buffer = await Packer.toBuffer(doc);
-  const blob = new Blob([buffer], {
+  const blob = new Blob([buffer.buffer as ArrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   });
 
