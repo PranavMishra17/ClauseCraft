@@ -1,6 +1,8 @@
 # ClauseCraft
 
-![ClauseCraft](/public/images/1.png)
+<p align="center">
+  <img src="/public/images/1.png" alt="ClauseCraft" width="70%">
+</p>
 
 An agentic document editor powered by AI that enables intelligent document editing through conversational commands and line-based citations.
 
