@@ -131,50 +131,6 @@ Click the lock icon next to any line to prevent AI modifications.
 
 Click the "Export" button to download your edited document in DOCX, PDF, or Markdown format.
 
-## API Endpoints
-
-### POST /api/parse
-
-Upload and parse a document.
-
-**Request:**
-- `file`: File (multipart/form-data)
-
-**Response:**
-```json
-{
-  "success": true,
-  "document": {
-    "id": "...",
-    "lines": [...],
-    "metadata": {...}
-  }
-}
-```
-
-### POST /api/chat
-
-Send a message and get AI response.
-
-**Request:**
-```json
-{
-  "message": "Search for payment",
-  "document": {...},
-  "chatHistory": [...]
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "I found 3 mentions...",
-  "actions": [...],
-  "document": {...}  // Updated if edits were made
-}
-```
-
 ## AI Tools
 
 The AI assistant has access to three tools:
@@ -196,13 +152,6 @@ All tools respect line locks and provide detailed error handling.
 - `/src/components` - React components
 - `/src/app/api` - API routes
 
-### Testing
-
-```bash
-npm run lint        # Run ESLint
-npm run build       # Test production build
-```
-
 ## Deployment
 
 ### Vercel
@@ -212,26 +161,6 @@ npm run build       # Test production build
 3. Add `GEMINI_API_KEY` environment variable
 4. Deploy
 
-
-## File Format Support
-
-### DOCX
-- Extracts text line by line
-- Preserves paragraph structure
-- Detects placeholders
-- Estimated page numbers (40 lines/page)
-
-### PDF
-- Extracts text per page
-- Accurate page tracking
-- Splits on newlines
-
-### Markdown
-- Simple line-by-line parsing
-- Detects headers
-- Preserves formatting
-- Estimated pages (50 lines/page)
-
 ## Limitations
 
 - PDF parsing may vary based on PDF structure
@@ -239,31 +168,15 @@ npm run build       # Test production build
 - Complex formatting may be simplified
 - Maximum file size: 10MB
 
-
 ## License
 
 MIT License - see LICENSE file
 
-## Contributing
 
-Contributions welcome! Please read CONTRIBUTING.md first.
-
-### Connect with me
+## Connect with me
 
 [![Portfolio](https://img.shields.io/badge/-Portfolio-000?style=for-the-badge&logo=vercel&logoColor=white)](https://portfolio-pranav-mishra-paranoid.vercel.app)
 [![LinkedIn](https://img.shields.io/badge/-LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pranavgamedev/)
 [![Resume](https://img.shields.io/badge/-Resume-4B0082?style=for-the-badge&logo=read-the-docs&logoColor=white)](https://portfolio-pranav-mishra-paranoid.vercel.app/resume)
 [![YouTube](https://img.shields.io/badge/-YouTube-8B0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/@parano1dgames/featured)
 [![Hugging Face](https://img.shields.io/badge/-Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/Paranoiid)
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/PranavMishra17/ClauseCraft/issues
-- Documentation: Check the /docs folder
-
-## Acknowledgments
-
-- Built with Next.js and React
-- Powered by Google Gemini
-- Icons by Lucide
