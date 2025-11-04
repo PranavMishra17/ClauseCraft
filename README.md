@@ -178,7 +178,7 @@ MIT License - see LICENSE file
 <table align="center">
 <tr>
 <td width="200px">
-  <img src="public/images/me.png" alt="Pranav Mishra" width="180" style="border: 5px solid; border-image: linear-gradient(45deg, #9d4edd, #ff006e) 1;">
+  <img src="public/images/me.jpg" alt="Pranav Mishra" width="180" style="border: 5px solid; border-image: linear-gradient(45deg, #9d4edd, #ff006e) 1;">
 </td>
 <td>
   
